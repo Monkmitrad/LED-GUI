@@ -83,7 +83,7 @@
             "RED",
             "GREEN",
             "BLUE"});
-            this.comboBox1.Location = new System.Drawing.Point(507, 121);
+            this.comboBox1.Location = new System.Drawing.Point(507, 133);
             this.comboBox1.Name = "comboBox1";
             this.comboBox1.Size = new System.Drawing.Size(346, 21);
             this.comboBox1.TabIndex = 6;
