@@ -37,6 +37,9 @@
             this.button1 = new System.Windows.Forms.Button();
             this.trackBar3 = new System.Windows.Forms.TrackBar();
             this.label2 = new System.Windows.Forms.Label();
+            this.colorDialog1 = new System.Windows.Forms.ColorDialog();
+            this.button2 = new System.Windows.Forms.Button();
+            this.label3 = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.trackBar1)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.trackBar2)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.trackBar3)).BeginInit();
@@ -83,7 +86,7 @@
             "RED",
             "GREEN",
             "BLUE"});
-            this.comboBox1.Location = new System.Drawing.Point(507, 133);
+            this.comboBox1.Location = new System.Drawing.Point(507, 132);
             this.comboBox1.Name = "comboBox1";
             this.comboBox1.Size = new System.Drawing.Size(346, 21);
             this.comboBox1.TabIndex = 6;
@@ -118,11 +121,36 @@
             this.label2.TabIndex = 9;
             this.label2.Text = "RunningLight Speed";
             // 
+            // colorDialog1
+            // 
+            this.colorDialog1.AnyColor = true;
+            // 
+            // button2
+            // 
+            this.button2.Location = new System.Drawing.Point(507, 508);
+            this.button2.Name = "button2";
+            this.button2.Size = new System.Drawing.Size(75, 23);
+            this.button2.TabIndex = 10;
+            this.button2.Text = "ColorSelect";
+            this.button2.UseVisualStyleBackColor = true;
+            this.button2.Click += new System.EventHandler(this.button2_Click);
+            // 
+            // label3
+            // 
+            this.label3.AutoSize = true;
+            this.label3.Location = new System.Drawing.Point(507, 456);
+            this.label3.Name = "label3";
+            this.label3.Size = new System.Drawing.Size(35, 13);
+            this.label3.TabIndex = 11;
+            this.label3.Text = "label3";
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1185, 696);
+            this.Controls.Add(this.label3);
+            this.Controls.Add(this.button2);
             this.Controls.Add(this.label2);
             this.Controls.Add(this.trackBar3);
             this.Controls.Add(this.button1);
@@ -149,6 +177,9 @@
         private System.Windows.Forms.Button button1;
         private System.Windows.Forms.TrackBar trackBar3;
         private System.Windows.Forms.Label label2;
+        private System.Windows.Forms.ColorDialog colorDialog1;
+        private System.Windows.Forms.Button button2;
+        private System.Windows.Forms.Label label3;
     }
 }
 

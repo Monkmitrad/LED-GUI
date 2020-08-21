@@ -66,6 +66,7 @@ namespace VU_Meter
         private void InitializeComboBox()
         {
             comboBox1.Items.Clear();
+            comboBox1.Items.Add("CustomColor");
             comboBox1.Items.Add("WHITE");
             comboBox1.Items.Add("RED");
             comboBox1.Items.Add("GREEN");
@@ -83,6 +84,9 @@ namespace VU_Meter
             }
             switch (comboBox1.Text)
             {
+                case "CustomColor":
+                    _serial.WriteRGB(colorDialog1.Color.R, colorDialog1.Color.G, colorDialog1.Color.B);
+                    break;
                 case "WHITE":
                     _serial.WriteRGB(100, 100, 100);
                     break;
@@ -126,6 +130,18 @@ namespace VU_Meter
             } else if (comboBox1.Text == "Running-Light-Right")
             {
                 _serial.WriteRunning(true, trackBar3.Value);
+            }
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            if (colorDialog1.ShowDialog() == DialogResult.OK)
+            {
+                label3.Text = colorDialog1.Color.ToString();
+                if (comboBox1.Text == "CustomColor")
+                {
+                    _serial.WriteRGB(colorDialog1.Color.R, colorDialog1.Color.G, colorDialog1.Color.B);
+                }
             }
         }
     }
