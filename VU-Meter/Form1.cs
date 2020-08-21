@@ -38,8 +38,6 @@ namespace VU_Meter
             trackBar1.Value = Convert.ToInt32(mapLeft);
             trackBar2.Value = Convert.ToInt32(mapRight);
             label1.Text = mapLeft.ToString() + " | " + mapRight.ToString();
-            panel1.BackColor = Color.FromArgb(Convert.ToInt32(mapLeft), Color.Green);
-            panel2.BackColor = Color.FromArgb(Convert.ToInt32(mapRight), Color.Red);
 
             _serial.WriteVU(Convert.ToInt32(mapLeft), Convert.ToInt32(mapRight));
         }
