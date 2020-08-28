@@ -1,4 +1,8 @@
-﻿using NAudio.CoreAudioApi;
+﻿using NAudio;
+using NAudio.Dsp;
+using NAudio.Wave;
+using NAudio.CoreAudioApi;
+using NAudio.Utils;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -9,6 +13,8 @@ using System.Management;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Threading;
+using NAudio.Wave.SampleProviders;
 
 namespace VU_Meter
 {
@@ -18,14 +24,34 @@ namespace VU_Meter
 
         static MMDeviceEnumerator enumerator = new MMDeviceEnumerator();
         static MMDevice device = enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Console);
+
+        private WaveIn input;
+        private SampleAggregator aggregator;
+        int fftLength = 128;
+        float[] peaks;
+
+
         public Form1()
         {
             InitializeComponent();
             InitializeComboBox();
+
             _serial = new SerialCommunicator();
             _serial.Connect();
 
-            
+            for (int i = 0; i < WaveIn.DeviceCount; i++)
+            {
+                WaveInCapabilities info = WaveIn.GetCapabilities(i);
+                listBox1.Items.Add(i + " - " + info.ProductName);
+            }
+            listBox1.SelectedIndex = 0;
+
+            peaks = new float[fftLength];
+
+            aggregator = new SampleAggregator(fftLength: fftLength * 2);
+            aggregator.PerformFFT = true;
+            aggregator.FftCalculated += AggregatorCalculatedFFT;
+
         }
 
 
@@ -38,6 +64,7 @@ namespace VU_Meter
             trackBar1.Value = Convert.ToInt32(mapLeft);
             trackBar2.Value = Convert.ToInt32(mapRight);
             label1.Text = mapLeft.ToString() + " | " + mapRight.ToString();
+
 
             _serial.WriteVU(Convert.ToInt32(mapLeft), Convert.ToInt32(mapRight));
         }
@@ -119,7 +146,7 @@ namespace VU_Meter
             {
                 timer1.Stop();
             }
-            
+
         }
 
         private void trackBar3_Scroll(object sender, EventArgs e)
@@ -127,7 +154,8 @@ namespace VU_Meter
             if (comboBox1.Text == "Running-Light-Left")
             {
                 _serial.WriteRunning(false, trackBar3.Value);
-            } else if (comboBox1.Text == "Running-Light-Right")
+            }
+            else if (comboBox1.Text == "Running-Light-Right")
             {
                 _serial.WriteRunning(true, trackBar3.Value);
             }
@@ -143,6 +171,81 @@ namespace VU_Meter
                     _serial.WriteRGB(colorDialog1.Color.R, colorDialog1.Color.G, colorDialog1.Color.B);
                 }
             }
+        }
+
+        private void button3_Click(object sender, EventArgs e)
+        {
+            input = new WaveIn { DeviceNumber = 5 };
+            //input = new WasapiCapture(device);
+            input.DataAvailable += WaveInDataVailable;
+            input.StartRecording();
+            
+        }
+
+        private void WaveInDataVailable(object sender, WaveInEventArgs e)
+        {
+            uint val = 0;
+
+            int bps = input.WaveFormat.BitsPerSample / 8;
+            for (int i = 0; i < e.BytesRecorded; i += bps)
+            {
+                switch (input.WaveFormat.BitsPerSample)     // Getting the current value depending on the wave resolution
+                {
+                    case 16:
+                        val = BitConverter.ToUInt16(e.Buffer, i);
+                        break;
+
+                    case 24:
+                        val = Convert.ToUInt32(e.Buffer[i] + (e.Buffer[i + 1] << 8) + (e.Buffer[i + 2] << 16));
+                        break;
+
+                    case 32:
+                        val = BitConverter.ToUInt32(e.Buffer, i);
+                        break;
+                }
+
+                //float real = (float)(val * 2 / (Math.Pow(2, input.WaveFormat.BitsPerSample) - 1.0d) - 1.0f);    // converting the value to a range from -1 to +1 and add it to the fft aggregator
+                float real = (float)(val / (Math.Pow(2, input.WaveFormat.BitsPerSample) - 1.0d));	// converting the value to a range from 0 to +1 and add it to the fft aggregator
+
+                aggregator.Add(real);
+            }
+        }
+
+        private void AggregatorCalculatedFFT(object sender, FftEventArgs e)
+        {
+            float max = 0;
+            for (int i = 0; i < fftLength; i++)
+            {
+                float value = (float)Math.Sqrt(e.Result[i].X * e.Result[i].X + e.Result[i].Y * e.Result[i].Y);
+                if (value < 0.1)
+                {
+                    value = 0;
+                }
+                peaks[i] = value;
+                if (value > max)
+                {
+                    max = value;
+                }
+            }
+            label4.Text = peaks[2].ToString();
+            label5.Text = peaks[fftLength / 4].ToString();
+            label6.Text = peaks[fftLength / 2].ToString();
+            label7.Text = peaks[fftLength - 1].ToString();
+            label8.Text = max.ToString();
+        }
+
+        private void button4_Click(object sender, EventArgs e)
+        {
+            input.StopRecording();
+        }
+
+        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            if (input != null)
+            {
+                input.StopRecording();
+            }
+            _serial.Disconnect();
         }
     }
 }

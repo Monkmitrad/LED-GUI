@@ -95,5 +95,13 @@ namespace VU_Meter
                 throw new Exception("Fehler beim Schreiben!", ex);
             }
         }
+
+        public void Disconnect()
+        {
+            if (_serialPort.IsOpen)
+            {
+                _serialPort.Close();
+            }
+        }
     }
 }
