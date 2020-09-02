@@ -20,15 +20,16 @@ namespace VU_Meter
 {
     public partial class Form1 : Form
     {
-        private SerialCommunicator _serial;
+        private readonly SerialCommunicator _serial;
+        private static readonly MMDeviceEnumerator enumerator = new MMDeviceEnumerator();
+        private static readonly MMDevice device = enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Console);
 
-        static MMDeviceEnumerator enumerator = new MMDeviceEnumerator();
-        static MMDevice device = enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Console);
+        private bool vuIntensity = false;
 
         private WaveIn input;
-        private SampleAggregator aggregator;
-        int fftLength = 128;
-        float[] peaks;
+        private readonly SampleAggregator aggregator;
+        private readonly int fftLength = 256;
+        private readonly float[] peaks;
 
 
         public Form1()
@@ -48,8 +49,10 @@ namespace VU_Meter
 
             peaks = new float[fftLength];
 
-            aggregator = new SampleAggregator(fftLength: fftLength * 2);
-            aggregator.PerformFFT = true;
+            aggregator = new SampleAggregator(fftLength: fftLength * 2)
+            {
+                PerformFFT = true
+            };
             aggregator.FftCalculated += AggregatorCalculatedFFT;
 
         }
@@ -63,10 +66,20 @@ namespace VU_Meter
             float mapRight = MapValue(rightVolume);
             trackBar1.Value = Convert.ToInt32(mapLeft);
             trackBar2.Value = Convert.ToInt32(mapRight);
-            label1.Text = mapLeft.ToString() + " | " + mapRight.ToString();
+            //label1.Text = mapLeft.ToString() + " | " + mapRight.ToString();
 
-
-            _serial.WriteVU(Convert.ToInt32(mapLeft), Convert.ToInt32(mapRight));
+            if (vuIntensity)
+            {
+                // match brightness of strip with mono peak
+                int intensity = Convert.ToInt32(MapValue(leftVolume + rightVolume / 2, 0, 1.5f, 0, 255));
+                label1.Text = intensity.ToString();
+                _serial.WriteVU(Convert.ToInt32(mapLeft), Convert.ToInt32(mapRight), intensity);
+            } else
+            {
+                // just use audio channel values
+                _serial.WriteVU(Convert.ToInt32(mapLeft), Convert.ToInt32(mapRight));
+            }
+            
         }
 
         private float MapValue(float x)
@@ -103,7 +116,7 @@ namespace VU_Meter
             comboBox1.Items.Add("Running-Light-Right");
         }
 
-        private void comboBox1_SelectedValueChanged(object sender, EventArgs e)
+        private void ComboBox1_SelectedValueChanged(object sender, EventArgs e)
         {
             if (timer1.Enabled)
             {
@@ -140,7 +153,7 @@ namespace VU_Meter
             }
         }
 
-        private void button1_Click(object sender, EventArgs e)
+        private void Button1_Click(object sender, EventArgs e)
         {
             if (timer1.Enabled)
             {
@@ -149,7 +162,7 @@ namespace VU_Meter
 
         }
 
-        private void trackBar3_Scroll(object sender, EventArgs e)
+        private void TrackBar3_Scroll(object sender, EventArgs e)
         {
             if (comboBox1.Text == "Running-Light-Left")
             {
@@ -161,7 +174,7 @@ namespace VU_Meter
             }
         }
 
-        private void button2_Click(object sender, EventArgs e)
+        private void Button2_Click(object sender, EventArgs e)
         {
             if (colorDialog1.ShowDialog() == DialogResult.OK)
             {
@@ -173,13 +186,14 @@ namespace VU_Meter
             }
         }
 
-        private void button3_Click(object sender, EventArgs e)
+        private void Button3_Click(object sender, EventArgs e)
         {
-            input = new WaveIn { DeviceNumber = 5 };
+            input = new WaveIn { DeviceNumber = listBox1.SelectedIndex };
+            //input = new WaveIn { DeviceNumber = 5 };
             //input = new WasapiCapture(device);
             input.DataAvailable += WaveInDataVailable;
             input.StartRecording();
-            
+
         }
 
         private void WaveInDataVailable(object sender, WaveInEventArgs e)
@@ -217,12 +231,12 @@ namespace VU_Meter
             for (int i = 0; i < fftLength; i++)
             {
                 float value = (float)Math.Sqrt(e.Result[i].X * e.Result[i].X + e.Result[i].Y * e.Result[i].Y);
-                if (value < 0.1)
+                if (value < 0.02)
                 {
                     value = 0;
                 }
                 peaks[i] = value;
-                if (value > max)
+                if (value > max && i != 0 && i != 1)
                 {
                     max = value;
                 }
@@ -234,7 +248,7 @@ namespace VU_Meter
             label8.Text = max.ToString();
         }
 
-        private void button4_Click(object sender, EventArgs e)
+        private void Button4_Click(object sender, EventArgs e)
         {
             input.StopRecording();
         }
@@ -246,6 +260,11 @@ namespace VU_Meter
                 input.StopRecording();
             }
             _serial.Disconnect();
+        }
+
+        private void checkBox1_CheckedChanged(object sender, EventArgs e)
+        {
+            vuIntensity = checkBox1.Checked;
         }
     }
 }

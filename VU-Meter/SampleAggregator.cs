@@ -18,11 +18,11 @@ namespace VU_Meter
         // FFT
         public event EventHandler<FftEventArgs> FftCalculated;
         public bool PerformFFT { get; set; }
-        private Complex[] fftBuffer;
-        private FftEventArgs fftArgs;
+        private readonly Complex[] fftBuffer;
+        private readonly FftEventArgs fftArgs;
         private int fftPos;
-        private int fftLength;
-        private int m;
+        private readonly int fftLength;
+        private readonly int m;
 
         public SampleAggregator(int fftLength = 1024)
         {
@@ -69,10 +69,7 @@ namespace VU_Meter
             count++;
             if (count >= NotificationCount && NotificationCount > 0)
             {
-                if (MaximumCalculated != null)
-                {
-                    MaximumCalculated(this, new MaxSampleEventArgs(minValue, maxValue));
-                }
+                MaximumCalculated?.Invoke(this, new MaxSampleEventArgs(minValue, maxValue));
                 Reset();
             }
         }

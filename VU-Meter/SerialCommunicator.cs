@@ -14,7 +14,7 @@ namespace VU_Meter
     {
         private SerialPort _serialPort;
         private string _comPort;
-        private int _baudRate = 9600;
+        private readonly int _baudRate = 9600;
 
         public void Connect()
         {
@@ -32,10 +32,12 @@ namespace VU_Meter
             }
             try
             {
-                _serialPort = new SerialPort(_comPort, _baudRate, Parity.None, 8, StopBits.One);
-                _serialPort.NewLine = "\r\n";
-                _serialPort.DtrEnable = false;
-                _serialPort.RtsEnable = false;
+                _serialPort = new SerialPort(_comPort, _baudRate, Parity.None, 8, StopBits.One)
+                {
+                    NewLine = "\r\n",
+                    DtrEnable = false,
+                    RtsEnable = false
+                };
                 _serialPort.Open();
             }
             catch (InvalidOperationException)
@@ -53,6 +55,11 @@ namespace VU_Meter
         public void WriteVU(int l, int r)
         {
             Write("V," + l + "," + r, false);
+        }
+
+        public void WriteVU(int l, int r, int intensity)
+        {
+            Write("V," + l + "," + r + ',' + intensity, false);
         }
 
         /// <summary>
