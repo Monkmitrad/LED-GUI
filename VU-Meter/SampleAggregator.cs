@@ -21,7 +21,9 @@ namespace VU_Meter
         private readonly Complex[] fftBuffer;
         private readonly FftEventArgs fftArgs;
         private int fftPos;
+#pragma warning disable IDE0052 // Ungelesene private Member entfernen
         private readonly int fftLength;
+#pragma warning restore IDE0052 // Ungelesene private Member entfernen
         private readonly int m;
 
         public SampleAggregator(int fftLength = 1024)

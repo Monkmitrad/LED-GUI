@@ -1,20 +1,8 @@
-﻿using NAudio;
-using NAudio.Dsp;
+﻿using NAudio.CoreAudioApi;
 using NAudio.Wave;
-using NAudio.CoreAudioApi;
-using NAudio.Utils;
 using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
 using System.Linq;
-using System.Management;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
-using System.Threading;
-using NAudio.Wave.SampleProviders;
 
 namespace VU_Meter
 {
@@ -22,15 +10,10 @@ namespace VU_Meter
     {
         private readonly SerialCommunicator _serial;
         private static readonly MMDeviceEnumerator enumerator = new MMDeviceEnumerator();
-        private static readonly MMDevice device = enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Console);
+        private static MMDeviceCollection devices;
+        private static MMDevice device;
 
         private bool vuIntensity = false;
-
-        private WaveIn input;
-        private readonly SampleAggregator aggregator;
-        private readonly int fftLength = 256;
-        private readonly float[] peaks;
-
 
         public Form1()
         {
@@ -40,21 +23,12 @@ namespace VU_Meter
             _serial = new SerialCommunicator();
             _serial.Connect();
 
-            for (int i = 0; i < WaveIn.DeviceCount; i++)
+            devices = enumerator.EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active);
+            listBox1.Items.AddRange(devices.ToArray());
+            if (listBox1.Items.Count > 0)
             {
-                WaveInCapabilities info = WaveIn.GetCapabilities(i);
-                listBox1.Items.Add(i + " - " + info.ProductName);
+                listBox1.SelectedIndex = 0;
             }
-            listBox1.SelectedIndex = 0;
-
-            peaks = new float[fftLength];
-
-            aggregator = new SampleAggregator(fftLength: fftLength * 2)
-            {
-                PerformFFT = true
-            };
-            aggregator.FftCalculated += AggregatorCalculatedFFT;
-
         }
 
 
@@ -114,6 +88,8 @@ namespace VU_Meter
             comboBox1.Items.Add("VU-Meter");
             comboBox1.Items.Add("Running-Light-Left");
             comboBox1.Items.Add("Running-Light-Right");
+            comboBox1.Items.Add("ColorFade");
+            comboBox1.Items.Add("Strobe");
         }
 
         private void ComboBox1_SelectedValueChanged(object sender, EventArgs e)
@@ -148,6 +124,12 @@ namespace VU_Meter
                 case "Running-Light-Right":
                     _serial.WriteRunning(true, trackBar3.Value);
                     break;
+                case "ColorFade":
+                    _serial.WriteFade(trackBar3.Value);
+                    break;
+                case "Strobe":
+                    _serial.WriteStrobe(trackBar5.Value, trackBar6.Value);
+                    break;
                 default:
                     break;
             }
@@ -159,18 +141,21 @@ namespace VU_Meter
             {
                 timer1.Stop();
             }
-
         }
 
         private void TrackBar3_Scroll(object sender, EventArgs e)
         {
-            if (comboBox1.Text == "Running-Light-Left")
+            switch (comboBox1.Text)
             {
-                _serial.WriteRunning(false, trackBar3.Value);
-            }
-            else if (comboBox1.Text == "Running-Light-Right")
-            {
-                _serial.WriteRunning(true, trackBar3.Value);
+                case "Running-Light-Left":
+                    _serial.WriteRunning(false, trackBar3.Value);
+                    break;
+                case "Running-Light-Right":
+                    _serial.WriteRunning(true, trackBar3.Value);
+                    break;
+                case "ColorFade":
+                    _serial.WriteFade(trackBar3.Value);
+                    break;
             }
         }
 
@@ -186,85 +171,19 @@ namespace VU_Meter
             }
         }
 
-        private void Button3_Click(object sender, EventArgs e)
-        {
-            input = new WaveIn { DeviceNumber = listBox1.SelectedIndex };
-            //input = new WaveIn { DeviceNumber = 5 };
-            //input = new WasapiCapture(device);
-            input.DataAvailable += WaveInDataVailable;
-            input.StartRecording();
-
-        }
-
-        private void WaveInDataVailable(object sender, WaveInEventArgs e)
-        {
-            uint val = 0;
-
-            int bps = input.WaveFormat.BitsPerSample / 8;
-            for (int i = 0; i < e.BytesRecorded; i += bps)
-            {
-                switch (input.WaveFormat.BitsPerSample)     // Getting the current value depending on the wave resolution
-                {
-                    case 16:
-                        val = BitConverter.ToUInt16(e.Buffer, i);
-                        break;
-
-                    case 24:
-                        val = Convert.ToUInt32(e.Buffer[i] + (e.Buffer[i + 1] << 8) + (e.Buffer[i + 2] << 16));
-                        break;
-
-                    case 32:
-                        val = BitConverter.ToUInt32(e.Buffer, i);
-                        break;
-                }
-
-                //float real = (float)(val * 2 / (Math.Pow(2, input.WaveFormat.BitsPerSample) - 1.0d) - 1.0f);    // converting the value to a range from -1 to +1 and add it to the fft aggregator
-                float real = (float)(val / (Math.Pow(2, input.WaveFormat.BitsPerSample) - 1.0d));	// converting the value to a range from 0 to +1 and add it to the fft aggregator
-
-                aggregator.Add(real);
-            }
-        }
-
-        private void AggregatorCalculatedFFT(object sender, FftEventArgs e)
-        {
-            float max = 0;
-            for (int i = 0; i < fftLength; i++)
-            {
-                float value = (float)Math.Sqrt(e.Result[i].X * e.Result[i].X + e.Result[i].Y * e.Result[i].Y);
-                if (value < 0.02)
-                {
-                    value = 0;
-                }
-                peaks[i] = value;
-                if (value > max && i != 0 && i != 1)
-                {
-                    max = value;
-                }
-            }
-            label4.Text = peaks[2].ToString();
-            label5.Text = peaks[fftLength / 4].ToString();
-            label6.Text = peaks[fftLength / 2].ToString();
-            label7.Text = peaks[fftLength - 1].ToString();
-            label8.Text = max.ToString();
-        }
-
-        private void Button4_Click(object sender, EventArgs e)
-        {
-            input.StopRecording();
-        }
-
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
-            if (input != null)
-            {
-                input.StopRecording();
-            }
             _serial.Disconnect();
         }
 
-        private void checkBox1_CheckedChanged(object sender, EventArgs e)
+        private void CheckBox1_CheckedChanged(object sender, EventArgs e)
         {
             vuIntensity = checkBox1.Checked;
+        }
+
+        private void ListBox1_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            device = devices[listBox1.SelectedIndex];
         }
     }
 }

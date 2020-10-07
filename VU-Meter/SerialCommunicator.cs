@@ -80,6 +80,17 @@ namespace VU_Meter
             
         }
 
+        public void WriteFade(int speed)
+        {
+            Write("F, " + speed, false);
+        }
+
+
+        public void WriteStrobe(int flashDelay, int flashPause)
+        {
+            Write("S" + "," + flashDelay + "," + flashPause, false);
+        }
+
         public void WriteLine(string text)
         {
             Write(text, true);
@@ -99,7 +110,7 @@ namespace VU_Meter
             }
             catch (Exception ex)
             {
-                throw new Exception("Fehler beim Schreiben!", ex);
+                throw new Exception("Error while writing!", ex);
             }
         }
 
